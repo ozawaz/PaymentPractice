@@ -1,10 +1,15 @@
 package cn.ozawaz.weixin.config;
 
+import com.wechat.pay.contrib.apache.httpclient.util.PemUtil;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.security.PrivateKey;
 
 /**
  * @author ozawa
@@ -40,5 +45,19 @@ public class WxPayConfig {
 
     // 接收结果通知地址
     private String notifyDomain;
+
+    /**
+     * 获取商户私钥
+     * @param filename 文件地址
+     * @return 返回私钥
+     */
+    public PrivateKey getPrivateKey(String filename){
+        try {
+            return PemUtil.loadPrivateKey(new FileInputStream(filename));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException("私钥文件不存在", e);
+        }
+    }
+
 }
 
