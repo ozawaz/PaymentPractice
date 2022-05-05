@@ -68,7 +68,7 @@
         <dependency>
             <groupId>com.GitHub.wechatpay-apiv3</groupId>
             <artifactId>wechatpay-apache-httpclient</artifactId>
-            <version>0.3.0</version>
+            <version>0.4.5</version>
         </dependency>
 
         <dependency>
