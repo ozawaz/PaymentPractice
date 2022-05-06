@@ -22,7 +22,7 @@ import java.util.List;
  * @since JDK1.8
  */
 @RestController
-@RequestMapping("/api/pay")
+@RequestMapping("/api/product")
 @CrossOrigin
 @Api(tags="支付管理")
 public class ProductController {

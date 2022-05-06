@@ -2,12 +2,11 @@ package cn.ozawaz.weixin.service.impl;
 
 import cn.ozawaz.weixin.config.WxPayConfig;
 import cn.ozawaz.weixin.entity.OrderInfo;
-import cn.ozawaz.weixin.enums.OrderStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxApiCode;
 import cn.ozawaz.weixin.enums.wxpay.WxApiType;
 import cn.ozawaz.weixin.enums.wxpay.WxNotifyType;
+import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.WxPayService;
-import cn.ozawaz.weixin.util.OrderNoUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +17,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -36,6 +36,7 @@ public class WxPayServiceImpl implements WxPayService {
 
     private WxPayConfig wxPayConfig;
     private CloseableHttpClient wxPayClient;
+    private OrderInfoService orderInfoService;
 
     @Autowired
     public void setWxPayConfig(WxPayConfig wxPayConfig) {
@@ -47,31 +48,40 @@ public class WxPayServiceImpl implements WxPayService {
         this.wxPayClient = wxPayClient;
     }
 
+    @Autowired
+    public void setOrderInfoService(OrderInfoService orderInfoService) {
+        this.orderInfoService = orderInfoService;
+    }
+
     @Override
     public Map<String, Object> nativePay(Long productId) throws Exception {
         log.info("生成订单");
 
         // 生成订单
-        OrderInfo orderInfo = createOrderInfo(productId);
-        //TODO：存入数据库
+        OrderInfo orderInfo = orderInfoService.createOrderByProductId(productId);
+        // 判断订单是否已经存在，并返回二维码信息
+        Map<String, Object> map = isOrderInfoExist(orderInfo);
+        if (map != null) {
+            return map;
+        }
 
         // 调用订单api，获取二维码地址和订单号
         return callApi(orderInfo);
     }
 
     /**
-     * 创建订单
-     * @param productId 产品id
-     * @return 返回订单
+     * 判断订单是否存在，并返回二维码信息
+     * @param orderInfo 订单信息
+     * @return 返回二维码信息
      */
-    private OrderInfo createOrderInfo(Long productId) {
-        OrderInfo orderInfo = new OrderInfo();
-        orderInfo.setTitle("test")
-                .setOrderNo(OrderNoUtils.getOrderNo())
-                .setProductId(productId)
-                .setTotalFee(1)
-                .setOrderStatus(OrderStatus.NOTPAY.getType());
-        return orderInfo;
+    private Map<String, Object> isOrderInfoExist(OrderInfo orderInfo) {
+        String codeUrl = orderInfo.getCodeUrl();
+        if(!StringUtils.isEmpty(codeUrl)){
+            log.info("订单已存在，二维码已保存");
+            // 返回二维码信息
+            return getMap(codeUrl, orderInfo.getOrderNo());
+        }
+        return null;
     }
 
     /**
@@ -84,7 +94,7 @@ public class WxPayServiceImpl implements WxPayService {
         // 请求
         HttpPost httpPost = getHttpPost(jsonParams);
         // 完成签名并执行请求
-        return callHttpPost(httpPost, orderInfo.getOrderNo());
+        return callHttpPost(httpPost, orderInfo);
     }
 
     /**
@@ -129,11 +139,11 @@ public class WxPayServiceImpl implements WxPayService {
     /**
      * 完成签名并执行请求，返回地址和订单号
      * @param httpPost 请求
-     * @param orderNo 订单号
+     * @param orderInfo 订单对象
      * @return 返回地址和订单号
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object>  callHttpPost(HttpPost httpPost, String orderNo) throws Exception{
+    private Map<String, Object>  callHttpPost(HttpPost httpPost, OrderInfo orderInfo) throws Exception{
         try (CloseableHttpResponse response = wxPayClient.execute(httpPost)) {
             // 响应体
             String bodyAsString = EntityUtils.toString(response.getEntity());
@@ -145,11 +155,24 @@ public class WxPayServiceImpl implements WxPayService {
             HashMap<String, String> resultMap = JSON.parseObject(bodyAsString, HashMap.class);
             // 二维码
             String codeUrl = resultMap.get("code_url");
-            Map<String, Object> map = new HashMap<>(2);
-            map.put("codeUrl", codeUrl);
-            map.put("orderNo", orderNo);
-            return map;
+            // 保存二维码
+            orderInfoService.saveCodeUrl(orderInfo.getOrderNo(), codeUrl);
+            // 返回参数
+            return getMap(codeUrl, orderInfo.getOrderNo());
         }
+    }
+
+    /**
+     * 根据二维码和订单号生成对应信息
+     * @param codeUrl 二维码
+     * @param orderNo 订单号
+     * @return 返回对应信息
+     */
+    private Map<String, Object> getMap(String codeUrl, String orderNo) {
+        Map<String, Object> map = new HashMap<>(2);
+        map.put("codeUrl", codeUrl);
+        map.put("orderNo", orderNo);
+        return map;
     }
 
     /**

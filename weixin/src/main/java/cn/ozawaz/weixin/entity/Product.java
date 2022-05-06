@@ -1,13 +1,24 @@
 package cn.ozawaz.weixin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+/**
+ * @author ozawa
+ */
+@Setter
+@Getter
 @TableName("t_product")
 public class Product extends BaseEntity{
 
-    private String title; //商品名称
+    /**
+     * 商品名称
+     */
+    private String title;
 
-    private Integer price; //价格（分）
+    /**
+     * 价格（分）
+     */
+    private Integer price;
 }
