@@ -4,6 +4,8 @@ import cn.ozawaz.weixin.common.Result;
 import cn.ozawaz.weixin.service.WxPayService;
 import cn.ozawaz.weixin.util.HttpUtils;
 import cn.ozawaz.weixin.util.JsonUtils;
+import cn.ozawaz.weixin.util.WechatPay2ValidatorForRequest;
+import com.wechat.pay.contrib.apache.httpclient.auth.Verifier;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
@@ -34,6 +37,8 @@ import java.util.Map;
 public class WxPayController {
 
     private WxPayService wxPayService;
+    @Resource
+    private Verifier verifier;
 
     @Autowired
     public void setWxPayService(WxPayService wxPayService) {
@@ -69,9 +74,22 @@ public class WxPayController {
         // 处理通知参数
         String body = HttpUtils.readData(request);
         Map<String, Object> bodyMap = JsonUtils.getMap(body);
+        // id
+        String requestId = (String) bodyMap.get("id");
         log.info("支付通知的id ===> {}", bodyMap.get("id"));
         log.info("支付通知的完整数据 ===> {}", body);
-        //TODO : 签名的验证
+        // 签名的验证
+        WechatPay2ValidatorForRequest validator
+                = new WechatPay2ValidatorForRequest(verifier, body, requestId);
+        // 验签没通过
+        if (!validator.validate(request)) {
+            log.error("验签没通过");
+            response.setStatus(500);
+            map.put("code", "ERROR");
+            map.put("message", "验签没通过");
+            return JsonUtils.mapToJsonString(map);
+        }
+        log.info("验签通过");
         //TODO : 处理订单
         //成功应答：成功应答必须为200或204，否则就是失败应答
         response.setStatus(200);
