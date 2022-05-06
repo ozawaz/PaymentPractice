@@ -1,5 +1,6 @@
 package cn.ozawaz.weixin.service;
 
+import java.security.GeneralSecurityException;
 import java.util.Map;
 
 /**
@@ -18,4 +19,11 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     Map<String, Object> nativePay(Long productId) throws Exception;
+
+    /**
+     * 处理订单
+     * @param bodyMap 参数
+     * @throws GeneralSecurityException 异常
+     */
+    void processOrder(Map<String, Object> bodyMap) throws GeneralSecurityException;
 }

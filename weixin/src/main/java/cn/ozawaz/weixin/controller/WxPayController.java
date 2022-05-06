@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,9 +69,9 @@ public class WxPayController {
     @ApiOperation("支付通知")
     @PostMapping("/native/notify")
     @SuppressWarnings("unchecked")
-    public String nativeNotify(HttpServletRequest request, HttpServletResponse response) {
+    public String nativeNotify(HttpServletRequest request, HttpServletResponse response) throws GeneralSecurityException {
         // 应答对象
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new HashMap<>(2);
         // 处理通知参数
         String body = HttpUtils.readData(request);
         Map<String, Object> bodyMap = JsonUtils.getMap(body);
@@ -90,7 +91,8 @@ public class WxPayController {
             return JsonUtils.mapToJsonString(map);
         }
         log.info("验签通过");
-        //TODO : 处理订单
+        // 处理订单
+        wxPayService.processOrder(bodyMap);
         //成功应答：成功应答必须为200或204，否则就是失败应答
         response.setStatus(200);
         map.put("code", "SUCCESS");
