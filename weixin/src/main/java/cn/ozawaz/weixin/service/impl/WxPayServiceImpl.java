@@ -114,6 +114,36 @@ public class WxPayServiceImpl implements WxPayService {
         }
     }
 
+    @Override
+    public void cancelOrder(String orderNo) throws Exception {
+        // 调用微信支付的关单接口
+        closeOrder(orderNo);
+        // 更新商户端的订单状态
+        orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.CANCEL);
+    }
+
+    /**
+     * 关单接口调用
+     * @param orderNo 订单号
+     */
+    private void closeOrder(String orderNo) throws Exception {
+        log.info("关单接口的调用，订单号 ===> {}", orderNo);
+
+        // 组装json请求体
+        Map<String, String> paramsMap = new HashMap<>();
+        paramsMap.put("mchid", wxPayConfig.getMchId());
+        String jsonParams = JsonUtils.mapToJsonString(paramsMap);
+        log.info("请求参数 ===> {}", jsonParams);
+
+        // 创建远程请求对象
+        String url = String.format(WxApiType.CLOSE_ORDER_BY_NO.getType(), orderNo);
+        url = wxPayConfig.getDomain().concat(url);
+        HttpPost httpPost = getHttpPost(jsonParams, url);
+
+        // 完成签名并执行请求
+        callHttpPost(httpPost);
+    }
+
     /**
      * 更新订单
      * @param orderNo 订单号
@@ -197,8 +227,10 @@ public class WxPayServiceImpl implements WxPayService {
         // 请求body参数
         String jsonParams = getCallParameter(orderInfo);
         log.info("请求参数：" + jsonParams);
+        // 请求地址
+        String url = wxPayConfig.getDomain().concat(WxApiType.NATIVE_PAY.getType());
         // 请求
-        HttpPost httpPost = getHttpPost(jsonParams);
+        HttpPost httpPost = getHttpPost(jsonParams, url);
         // 完成签名并执行请求
         return callHttpPost(httpPost, orderInfo);
     }
@@ -230,11 +262,11 @@ public class WxPayServiceImpl implements WxPayService {
     /**
      * 根据请求参数，封装请求
      * @param jsonParams 请求参数
+     * @param url 请求地址
      * @return 返回封装好的请求
      */
-    private HttpPost getHttpPost(String jsonParams) {
-        String uri = wxPayConfig.getDomain().concat(WxApiType.NATIVE_PAY.getType());
-        HttpPost httpPost = new HttpPost(uri);
+    private HttpPost getHttpPost(String jsonParams, String url) {
+        HttpPost httpPost = new HttpPost(url);
         StringEntity entity = new StringEntity(jsonParams,"utf-8");
         entity.setContentType("application/json");
         httpPost.setEntity(entity);
@@ -265,6 +297,24 @@ public class WxPayServiceImpl implements WxPayService {
             orderInfoService.saveCodeUrl(orderInfo.getOrderNo(), codeUrl);
             // 返回参数
             return getMap(codeUrl, orderInfo.getOrderNo());
+        }
+    }
+
+    /**
+     * 完成签名并执行请求
+     * @param httpPost 请求
+     */
+    private void callHttpPost(HttpPost httpPost) throws Exception{
+        try (CloseableHttpResponse response = wxPayClient.execute(httpPost)) {
+            // 响应体
+            String bodyAsString = "无返回体";
+            if (response.getEntity() != null) {
+                bodyAsString = EntityUtils.toString(response.getEntity());
+            }
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 处理响应
+            detailResponse(statusCode, bodyAsString);
         }
     }
 

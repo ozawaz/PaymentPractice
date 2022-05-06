@@ -9,6 +9,7 @@ import cn.ozawaz.weixin.service.ProductService;
 import cn.ozawaz.weixin.util.OrderNoUtils;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.List;
  * @author ozawa
  */
 @Service
+@Slf4j
 public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo> implements OrderInfoService {
 
     private ProductService productService;
@@ -58,6 +60,14 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     public List<OrderInfo> listOrderByCreateTimeDesc() {
         QueryWrapper<OrderInfo> queryWrapper = new QueryWrapper<OrderInfo>().orderByDesc("create_time");
         return baseMapper.selectList(queryWrapper);
+    }
+
+    @Override
+    public void updateStatusByOrderNo(String orderNo, OrderStatus type) {
+        log.info("更新订单状态");
+        OrderInfo orderInfo = this.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
+        orderInfo.setOrderStatus(type.getType());
+        this.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
     }
 
     /**

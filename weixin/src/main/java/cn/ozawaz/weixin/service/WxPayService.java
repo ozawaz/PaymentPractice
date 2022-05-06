@@ -26,4 +26,11 @@ public interface WxPayService {
      * @throws GeneralSecurityException 异常
      */
     void processOrder(Map<String, Object> bodyMap) throws GeneralSecurityException;
+
+    /**
+     * 用户取消订单
+     * @param orderNo 订单号
+     * @throws Exception 异常
+     */
+    void cancelOrder(String orderNo) throws Exception;
 }

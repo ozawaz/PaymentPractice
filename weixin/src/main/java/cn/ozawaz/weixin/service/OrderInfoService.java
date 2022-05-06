@@ -1,6 +1,7 @@
 package cn.ozawaz.weixin.service;
 
 import cn.ozawaz.weixin.entity.OrderInfo;
+import cn.ozawaz.weixin.enums.OrderStatus;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -29,4 +30,11 @@ public interface OrderInfoService extends IService<OrderInfo> {
      * @return 返回订单列表
      */
     List<OrderInfo> listOrderByCreateTimeDesc();
+
+    /**
+     * 更新商户端的订单状态
+     * @param orderNo 订单号
+     * @param type 订单状态
+     */
+    void updateStatusByOrderNo(String orderNo, OrderStatus type);
 }

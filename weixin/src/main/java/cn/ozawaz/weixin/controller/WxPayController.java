@@ -99,4 +99,18 @@ public class WxPayController {
         map.put("message", "成功");
         return JsonUtils.mapToJsonString(map);
     }
+
+    /**
+     * 用户取消订单
+     * @param orderNo 订单号
+     * @return 返回消息
+     * @throws Exception 异常
+     */
+    @ApiOperation("用户取消订单")
+    @PostMapping("/cancel/{orderNo}")
+    public Result cancel(@PathVariable String orderNo) throws Exception {
+        log.info("取消订单");
+        wxPayService.cancelOrder(orderNo);
+        return Result.ok().setMessage("订单已取消");
+    }
 }
