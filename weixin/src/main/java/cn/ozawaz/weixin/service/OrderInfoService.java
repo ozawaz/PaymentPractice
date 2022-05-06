@@ -3,6 +3,8 @@ package cn.ozawaz.weixin.service;
 import cn.ozawaz.weixin.entity.OrderInfo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
  * @author ozawa
  */
@@ -22,4 +24,9 @@ public interface OrderInfoService extends IService<OrderInfo> {
      */
     void saveCodeUrl(String orderNo, String codeUrl);
 
+    /**
+     * 查询订单列表，并倒序查询
+     * @return 返回订单列表
+     */
+    List<OrderInfo> listOrderByCreateTimeDesc();
 }

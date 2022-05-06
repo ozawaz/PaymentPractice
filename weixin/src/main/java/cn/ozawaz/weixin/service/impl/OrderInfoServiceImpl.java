@@ -7,9 +7,12 @@ import cn.ozawaz.weixin.mapper.OrderInfoMapper;
 import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.ProductService;
 import cn.ozawaz.weixin.util.OrderNoUtils;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * @author ozawa
@@ -49,6 +52,12 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         // 更新
         orderInfo.setCodeUrl(codeUrl);
         this.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
+    }
+
+    @Override
+    public List<OrderInfo> listOrderByCreateTimeDesc() {
+        QueryWrapper<OrderInfo> queryWrapper = new QueryWrapper<OrderInfo>().orderByDesc("create_time");
+        return baseMapper.selectList(queryWrapper);
     }
 
     /**
