@@ -2,6 +2,8 @@ package cn.ozawaz.weixin.controller;
 
 import cn.ozawaz.weixin.common.Result;
 import cn.ozawaz.weixin.service.WxPayService;
+import cn.ozawaz.weixin.util.HttpUtils;
+import cn.ozawaz.weixin.util.JsonUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -37,6 +42,7 @@ public class WxPayController {
 
     /**
      * Native下单
+     *
      * @param productId 产品id
      * @return 返回支付二维码连接和订单号
      * @throws Exception 异常
@@ -48,5 +54,29 @@ public class WxPayController {
         // 支付二维码连接和订单号
         Map<String, Object> map = wxPayService.nativePay(productId);
         return Result.ok().setData(map);
+    }
+
+    /**
+     * 支付通知
+     * 微信支付通过支付通知接口将用户支付成功消息通知给商户
+     */
+    @ApiOperation("支付通知")
+    @PostMapping("/native/notify")
+    @SuppressWarnings("unchecked")
+    public String nativeNotify(HttpServletRequest request, HttpServletResponse response) {
+        // 应答对象
+        Map<String, String> map = new HashMap<>();
+        // 处理通知参数
+        String body = HttpUtils.readData(request);
+        Map<String, Object> bodyMap = JsonUtils.getMap(body);
+        log.info("支付通知的id ===> {}", bodyMap.get("id"));
+        log.info("支付通知的完整数据 ===> {}", body);
+        //TODO : 签名的验证
+        //TODO : 处理订单
+        //成功应答：成功应答必须为200或204，否则就是失败应答
+        response.setStatus(200);
+        map.put("code", "SUCCESS");
+        map.put("message", "成功");
+        return JsonUtils.mapToJsonString(map);
     }
 }
