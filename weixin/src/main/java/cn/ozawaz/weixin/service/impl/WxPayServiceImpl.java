@@ -2,11 +2,14 @@ package cn.ozawaz.weixin.service.impl;
 
 import cn.ozawaz.weixin.config.WxPayConfig;
 import cn.ozawaz.weixin.entity.OrderInfo;
+import cn.ozawaz.weixin.enums.OrderStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxApiCode;
 import cn.ozawaz.weixin.enums.wxpay.WxApiType;
 import cn.ozawaz.weixin.enums.wxpay.WxNotifyType;
 import cn.ozawaz.weixin.service.OrderInfoService;
+import cn.ozawaz.weixin.service.PaymentInfoService;
 import cn.ozawaz.weixin.service.WxPayService;
+import cn.ozawaz.weixin.util.JsonUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.wechat.pay.contrib.apache.httpclient.util.AesUtil;
@@ -40,6 +43,7 @@ public class WxPayServiceImpl implements WxPayService {
     private WxPayConfig wxPayConfig;
     private CloseableHttpClient wxPayClient;
     private OrderInfoService orderInfoService;
+    private PaymentInfoService paymentInfoService;
 
     @Autowired
     public void setWxPayConfig(WxPayConfig wxPayConfig) {
@@ -54,6 +58,11 @@ public class WxPayServiceImpl implements WxPayService {
     @Autowired
     public void setOrderInfoService(OrderInfoService orderInfoService) {
         this.orderInfoService = orderInfoService;
+    }
+
+    @Autowired
+    public void setPaymentInfoService(PaymentInfoService paymentInfoService) {
+        this.paymentInfoService = paymentInfoService;
     }
 
     @Override
@@ -73,15 +82,30 @@ public class WxPayServiceImpl implements WxPayService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void processOrder(Map<String, Object> bodyMap) throws GeneralSecurityException {
         log.info("处理订单");
-
         // 解密获取明文
         String plainText = decryptFromResource(bodyMap);
+        // 转换明文
+        HashMap<String, Object> map = JsonUtils.getMap(plainText);
+        // 获取订单号
+        String orderNo = (String) map.get("out_trade_no");
+        // 更新订单状态
+        updateOrderInfo(orderNo);
+        // 记录支付日志
+        paymentInfoService.createPaymentInfo(plainText);
+    }
 
-        //转换明文
-        //更新订单状态
-        //记录支付日志
+    /**
+     * 更新订单
+     * @param orderNo 订单号
+     */
+    private void updateOrderInfo(String orderNo) {
+        log.info("更新订单状态");
+        OrderInfo orderInfo = orderInfoService.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
+        orderInfo.setOrderStatus(OrderStatus.SUCCESS.getType());
+        orderInfoService.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
     }
 
     /**
