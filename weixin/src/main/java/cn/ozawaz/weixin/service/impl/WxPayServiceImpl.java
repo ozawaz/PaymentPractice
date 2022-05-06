@@ -28,6 +28,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author ozawa
@@ -44,6 +46,7 @@ public class WxPayServiceImpl implements WxPayService {
     private CloseableHttpClient wxPayClient;
     private OrderInfoService orderInfoService;
     private PaymentInfoService paymentInfoService;
+    private final ReentrantLock lock = new ReentrantLock();
 
     @Autowired
     public void setWxPayConfig(WxPayConfig wxPayConfig) {
@@ -91,12 +94,24 @@ public class WxPayServiceImpl implements WxPayService {
         HashMap<String, Object> map = JsonUtils.getMap(plainText);
         // 获取订单号
         String orderNo = (String) map.get("out_trade_no");
-        // 更新订单状态
-        if (updateOrderInfo(orderNo)) {
-            return;
+        /*在对业务数据进行状态检查和处理之前，
+        要采用数据锁进行并发控制，
+        以避免函数重入造成的数据混乱*/
+        // 尝试获取锁：
+        // 成功获取则立即返回true，获取失败则立即返回false。不必一直等待锁的释放
+        if (lock.tryLock()) {
+            try {
+                // 更新订单状态
+                if (updateOrderInfo(orderNo)) {
+                    return;
+                }
+                // 记录支付日志
+                paymentInfoService.createPaymentInfo(plainText);
+            } finally {
+                // 要主动释放锁
+                lock.unlock();
+            }
         }
-        // 记录支付日志
-        paymentInfoService.createPaymentInfo(plainText);
     }
 
     /**
@@ -118,6 +133,14 @@ public class WxPayServiceImpl implements WxPayService {
             return false;
         }
         orderInfo.setOrderStatus(OrderStatus.SUCCESS.getType());
+
+        // 模拟通知并发
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         orderInfoService.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
         return true;
     }
