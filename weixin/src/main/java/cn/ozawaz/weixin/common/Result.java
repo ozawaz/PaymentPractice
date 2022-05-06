@@ -2,6 +2,7 @@ package cn.ozawaz.weixin.common;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +16,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
+@Accessors(chain = true)
 public class Result {
 
     private Integer code;

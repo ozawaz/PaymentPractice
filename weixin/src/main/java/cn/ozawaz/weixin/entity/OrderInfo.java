@@ -1,23 +1,51 @@
 package cn.ozawaz.weixin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 
-@Data
+/**
+ * @author ozawa
+ */
+@Setter
+@Getter
+@Accessors(chain = true)
 @TableName("t_order_info")
-public class OrderInfo  extends BaseEntity{
+public class OrderInfo extends BaseEntity{
 
-    private String title;//订单标题
+    /**
+     * 订单标题
+     */
+    private String title;
 
-    private String orderNo;//商户订单编号
+    /**
+     * 商户订单编号
+     */
+    private String orderNo;
 
-    private Long userId;//用户id
+    /**
+     * 用户id
+     */
+    private Long userId;
 
-    private Long productId;//支付产品id
+    /**
+     * 支付产品id
+     */
+    private Long productId;
 
-    private Integer totalFee;//订单金额(分)
+    /**
+     * 订单金额(分)
+     */
+    private Integer totalFee;
 
-    private String codeUrl;//订单二维码连接
+    /**
+     * 订单二维码连接
+     */
+    private String codeUrl;
 
-    private String orderStatus;//订单状态
+    /**
+     * 订单状态
+     */
+    private String orderStatus;
 }

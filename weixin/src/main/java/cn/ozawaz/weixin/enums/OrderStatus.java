@@ -3,6 +3,9 @@ package cn.ozawaz.weixin.enums;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+/**
+ * @author ozawa
+ */
 @AllArgsConstructor
 @Getter
 public enum OrderStatus {
