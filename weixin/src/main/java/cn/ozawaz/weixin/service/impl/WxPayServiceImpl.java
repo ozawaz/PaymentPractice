@@ -92,7 +92,9 @@ public class WxPayServiceImpl implements WxPayService {
         // 获取订单号
         String orderNo = (String) map.get("out_trade_no");
         // 更新订单状态
-        updateOrderInfo(orderNo);
+        if (updateOrderInfo(orderNo)) {
+            return;
+        }
         // 记录支付日志
         paymentInfoService.createPaymentInfo(plainText);
     }
@@ -101,11 +103,23 @@ public class WxPayServiceImpl implements WxPayService {
      * 更新订单
      * @param orderNo 订单号
      */
-    private void updateOrderInfo(String orderNo) {
+    private boolean updateOrderInfo(String orderNo) {
         log.info("更新订单状态");
         OrderInfo orderInfo = orderInfoService.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
+        // 防止被删除的订单的回调通知的调用
+        if (orderInfo == null){
+            return false;
+        }
+        // 处理重复通知
+        // 保证接口调用的幂等性：无论接口被调用多少次，产生的结果是一致的
+        String orderStatus = orderInfo.getOrderStatus();
+        // 判断支付状态
+        if (!orderStatus.equals(OrderStatus.NOTPAY.getType())) {
+            return false;
+        }
         orderInfo.setOrderStatus(OrderStatus.SUCCESS.getType());
         orderInfoService.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
+        return true;
     }
 
     /**
