@@ -184,6 +184,20 @@ public class WxPayServiceImpl implements WxPayService {
         callHttpPost(httpPost, orderNo);
     }
 
+    @Override
+    public String queryRefund(String refundNo) throws Exception {
+        log.info("查询退款接口调用 ===> {}", refundNo);
+
+        // 地址
+        String url = String.format(WxApiType.DOMESTIC_REFUNDS_QUERY.getType(), refundNo);
+        url = wxPayConfig.getDomain().concat(url);
+        // 请求对象
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Accept", "application/json");
+
+        return callHttpReturn(Collections.singletonList(httpGet));
+    }
+
     /**
      * 根据退款单信息获取对应的参数
      * @param refundInfo 退款单信息

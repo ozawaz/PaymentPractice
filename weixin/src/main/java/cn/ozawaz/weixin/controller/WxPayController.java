@@ -136,4 +136,18 @@ public class WxPayController {
         wxPayService.refunds(orderNo, reason);
         return Result.ok();
     }
+
+    /**
+     * 查询退款
+     * @param refundNo 退款号
+     * @return 返回信息
+     * @throws Exception 异常
+     */
+    @ApiOperation("查询退款：测试用")
+    @GetMapping("/query-refund/{refundNo}")
+    public Result queryRefund(@PathVariable String refundNo) throws Exception {
+        log.info("查询退款");
+        String result = wxPayService.queryRefund(refundNo);
+        return Result.ok().setMessage("查询成功").data("result", result);
+    }
 }

@@ -35,7 +35,7 @@ public interface WxPayService {
     void cancelOrder(String orderNo) throws Exception;
 
     /**
-     查询订单
+     * 查询订单
      * @param orderNo 订单号
      * @return 返回订单状态
      * @throws Exception 异常
@@ -56,4 +56,12 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     void refunds(String orderNo, String reason) throws Exception;
+
+    /**
+     * 查询退款接口调用
+     * @param refundNo 退单号
+     * @return 返回信息
+     * @throws Exception 异常
+     */
+    String queryRefund(String refundNo) throws Exception;
 }
