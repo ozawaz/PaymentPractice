@@ -48,4 +48,12 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     void checkOrderStatus(String orderNo) throws Exception;
+
+    /**
+     * 根据订单号和退款理由，申请退款
+     * @param orderNo 订单号
+     * @param reason 退款理由
+     * @throws Exception 异常
+     */
+    void refunds(String orderNo, String reason) throws Exception;
 }

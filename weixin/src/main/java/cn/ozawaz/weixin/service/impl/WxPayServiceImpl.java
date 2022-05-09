@@ -2,6 +2,7 @@ package cn.ozawaz.weixin.service.impl;
 
 import cn.ozawaz.weixin.config.WxPayConfig;
 import cn.ozawaz.weixin.entity.OrderInfo;
+import cn.ozawaz.weixin.entity.RefundInfo;
 import cn.ozawaz.weixin.enums.OrderStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxApiCode;
 import cn.ozawaz.weixin.enums.wxpay.WxApiType;
@@ -9,6 +10,7 @@ import cn.ozawaz.weixin.enums.wxpay.WxNotifyType;
 import cn.ozawaz.weixin.enums.wxpay.WxTradeState;
 import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.PaymentInfoService;
+import cn.ozawaz.weixin.service.RefundInfoService;
 import cn.ozawaz.weixin.service.WxPayService;
 import cn.ozawaz.weixin.util.JsonUtils;
 import com.alibaba.fastjson.JSON;
@@ -51,6 +53,7 @@ public class WxPayServiceImpl implements WxPayService {
     private CloseableHttpClient wxPayClient;
     private OrderInfoService orderInfoService;
     private PaymentInfoService paymentInfoService;
+    private RefundInfoService refundInfoService;
     private final ReentrantLock lock = new ReentrantLock();
 
     @Autowired
@@ -71,6 +74,11 @@ public class WxPayServiceImpl implements WxPayService {
     @Autowired
     public void setPaymentInfoService(PaymentInfoService paymentInfoService) {
         this.paymentInfoService = paymentInfoService;
+    }
+
+    @Autowired
+    public void setRefundInfoService(RefundInfoService refundInfoService) {
+        this.refundInfoService = refundInfoService;
     }
 
     @Override
@@ -96,7 +104,7 @@ public class WxPayServiceImpl implements WxPayService {
         // 解密获取明文
         String plainText = decryptFromResource(bodyMap);
         // 转换明文
-        HashMap<String, Object> map = JsonUtils.getMap(plainText);
+        HashMap<String, Object> map = JsonUtils.jsonStringToMap(plainText);
         // 获取订单号
         String orderNo = (String) map.get("out_trade_no");
         /*在对业务数据进行状态检查和处理之前，
@@ -148,11 +156,61 @@ public class WxPayServiceImpl implements WxPayService {
         // 调用查询接口，获取json字符串
         String jsonString = queryOrder(orderNo);
         // 改成map对象
-        HashMap<String, Object> map = JsonUtils.getMap(jsonString);
+        HashMap<String, Object> map = JsonUtils.jsonStringToMap(jsonString);
         // 获取订单状态
         Object tradeState = map.get("trade_state");
         // 根据订单状态进行对应的处理
         detailOrder(tradeState, jsonString, orderNo);
+    }
+
+    @Override
+    public void refunds(String orderNo, String reason) throws Exception {
+        // 创建退款单记录
+        RefundInfo refundInfo = refundInfoService.createRefundByOrderNo(orderNo, reason);
+
+        // 调用退款API
+        log.info("调用退款API");
+
+        // 组装json请求体
+        Map<String, Object> paramsMap = getRefundParamsMap(refundInfo);
+        String jsonParams = JsonUtils.mapToJsonString(paramsMap);
+        log.info("请求参数 ===> {}", jsonParams);
+
+        // 创建远程请求对象
+        String url = wxPayConfig.getDomain().concat(WxApiType.DOMESTIC_REFUNDS.getType());
+        HttpPost httpPost = getHttpPost(jsonParams, url);
+
+        // 完成签名并执行请求
+        callHttpPost(httpPost, orderNo);
+    }
+
+    /**
+     * 根据退款单信息获取对应的参数
+     * @param refundInfo 退款单信息
+     * @return 返回参数
+     */
+    private Map<String, Object> getRefundParamsMap(RefundInfo refundInfo) {
+        Map<String, Object> paramsMap = new HashMap<>(5);
+        // 订单编号
+        paramsMap.put("out_trade_no", refundInfo.getOrderNo());
+        // 退款单编号
+        paramsMap.put("out_refund_no", refundInfo.getRefundNo());
+        // 退款理由
+        paramsMap.put("reason", refundInfo.getReason());
+        // 退款结果回调url
+        paramsMap.put("notify_url", wxPayConfig.getNotifyDomain().concat(WxNotifyType.REFUND_NOTIFY.getType()));
+        // 金额信息map
+        Map<String, Object> amountMap = new HashMap<>(3);
+        // 退款金额
+        amountMap.put("refund", refundInfo.getRefund());
+        // 原订单金额
+        amountMap.put("total", refundInfo.getTotalFee());
+        // 退款币种
+        amountMap.put("currency", "CNY");
+        // 存入map
+        paramsMap.put("amount", amountMap);
+
+        return paramsMap;
     }
 
     /**
@@ -336,7 +394,7 @@ public class WxPayServiceImpl implements WxPayService {
      * @return 返回地址和订单号
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object>  callHttpPost(HttpPost httpPost, OrderInfo orderInfo) throws Exception{
+    private Map<String, Object> callHttpPost(HttpPost httpPost, OrderInfo orderInfo) throws Exception{
         try (CloseableHttpResponse response = wxPayClient.execute(httpPost)) {
             // 响应体
             String bodyAsString = EntityUtils.toString(response.getEntity());
@@ -352,6 +410,26 @@ public class WxPayServiceImpl implements WxPayService {
             orderInfoService.saveCodeUrl(orderInfo.getOrderNo(), codeUrl);
             // 返回参数
             return getMap(codeUrl, orderInfo.getOrderNo());
+        }
+    }
+
+    /**
+     * 完成签名并执行请求，更新订单并保存退款信息
+     * @param httpPost 请求
+     * @param orderNo 订单号
+     */
+    private void callHttpPost(HttpPost httpPost, String orderNo) throws Exception{
+        try (CloseableHttpResponse response = wxPayClient.execute(httpPost)) {
+            // 响应体
+            String bodyAsString = EntityUtils.toString(response.getEntity());
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 处理响应
+            detailResponse(statusCode, bodyAsString);
+            // 更新订单状态
+            orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.REFUND_PROCESSING);
+            // 更新退款单
+            refundInfoService.updateRefund(bodyAsString);
         }
     }
 
@@ -420,7 +498,7 @@ public class WxPayServiceImpl implements WxPayService {
             // 处理成功，无返回Body
             log.info("成功");
         } else {
-            log.info("Native下单失败,响应码 = " + statusCode + ",返回结果 = " + bodyAsString);
+            log.info("失败,响应码 = " + statusCode + ",返回结果 = " + bodyAsString);
             throw new IOException("请求失败");
         }
     }

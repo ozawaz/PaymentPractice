@@ -16,7 +16,7 @@ import java.util.Map;
 public class JsonUtils {
 
     @SuppressWarnings("all")
-    public static HashMap getMap(String body) {
+    public static HashMap jsonStringToMap(String body) {
         return JSON.parseObject(body, HashMap.class);
     }
 

@@ -25,7 +25,7 @@ public class PaymentInfoServiceImpl extends ServiceImpl<PaymentInfoMapper, Payme
         log.info("记录支付日志");
 
         // 转换明文
-        HashMap<String, Object> map = JsonUtils.getMap(plainText);
+        HashMap<String, Object> map = JsonUtils.jsonStringToMap(plainText);
         // 订单号
         String orderNo = (String)map.get("out_trade_no");
         // 微信支付订单号

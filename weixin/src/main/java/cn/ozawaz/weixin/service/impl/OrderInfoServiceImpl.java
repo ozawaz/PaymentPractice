@@ -52,10 +52,10 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     @Override
     public void saveCodeUrl(String orderNo, String codeUrl) {
         // 查询订单
-        OrderInfo orderInfo = this.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
+        OrderInfo orderInfo = getOrderByOrderNo(orderNo);
         // 更新
         orderInfo.setCodeUrl(codeUrl);
-        this.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
+        updateOrderInfoByOrderNo(orderNo, orderInfo);
     }
 
     @Override
@@ -67,9 +67,9 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     @Override
     public void updateStatusByOrderNo(String orderNo, OrderStatus type) {
         log.info("更新订单状态");
-        OrderInfo orderInfo = this.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
+        OrderInfo orderInfo = getOrderByOrderNo(orderNo);
         orderInfo.setOrderStatus(type.getType());
-        this.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
+        updateOrderInfoByOrderNo(orderNo, orderInfo);
     }
 
     @Override
@@ -80,6 +80,11 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
                 .eq(OrderInfo::getOrderStatus, OrderStatus.NOTPAY.getType())
                 .le(OrderInfo::getCreateTime, instant)
                 .list();
+    }
+
+    @Override
+    public OrderInfo getOrderByOrderNo(String orderNo) {
+        return this.lambdaQuery().eq(OrderInfo::getOrderNo, orderNo).one();
     }
 
     /**
@@ -109,5 +114,14 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
                 .setTotalFee(product.getPrice())
                 .setOrderStatus(OrderStatus.NOTPAY.getType());
         return orderInfo;
+    }
+
+    /**
+     * 根据订单号更新对应的订单信息
+     * @param orderNo 订单号
+     * @param orderInfo 订单信息
+     */
+    private void updateOrderInfoByOrderNo(String orderNo, OrderInfo orderInfo) {
+        this.lambdaUpdate().eq(OrderInfo::getOrderNo, orderNo).update(orderInfo);
     }
 }

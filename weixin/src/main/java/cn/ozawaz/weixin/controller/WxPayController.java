@@ -75,7 +75,7 @@ public class WxPayController {
         Map<String, String> map = new HashMap<>(2);
         // 处理通知参数
         String body = HttpUtils.readData(request);
-        Map<String, Object> bodyMap = JsonUtils.getMap(body);
+        Map<String, Object> bodyMap = JsonUtils.jsonStringToMap(body);
         // id
         String requestId = (String) bodyMap.get("id");
         log.info("支付通知的id ===> {}", bodyMap.get("id"));
@@ -127,5 +127,13 @@ public class WxPayController {
         log.info("查询订单");
         String bodyAsString = wxPayService.queryOrder(orderNo);
         return Result.ok().setMessage("查询成功").data("bodyAsString", bodyAsString);
+    }
+
+    @ApiOperation("申请退款")
+    @PostMapping("/refunds/{orderNo}/{reason}")
+    public Result refunds(@PathVariable String orderNo, @PathVariable String reason) throws Exception {
+        log.info("申请退款");
+        wxPayService.refunds(orderNo, reason);
+        return Result.ok();
     }
 }
