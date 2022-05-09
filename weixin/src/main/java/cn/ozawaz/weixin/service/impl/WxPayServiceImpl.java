@@ -216,6 +216,35 @@ public class WxPayServiceImpl implements WxPayService {
         detailRefund(status, jsonString, orderNo, refundNo);
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public void processRefund(Map<String, Object> bodyMap) throws GeneralSecurityException {
+        log.info("退款单");
+        // 解密获取明文
+        String plainText = decryptFromResource(bodyMap);
+        // 转换明文
+        HashMap<String, Object> map = JsonUtils.jsonStringToMap(plainText);
+        // 获取订单号
+        String orderNo = (String) map.get("out_trade_no");
+        if(lock.tryLock()){
+            try {
+                String orderStatus = orderInfoService.getOrderByOrderNo(orderNo).getOrderStatus();
+                if (!OrderStatus.REFUND_PROCESSING.getType().equals(orderStatus)) {
+                    return;
+                }
+                // 更新订单状态
+                orderInfoService.updateStatusByOrderNo(orderNo,
+                        OrderStatus.REFUND_SUCCESS);
+                // 更新退款单
+                refundInfoService.updateRefund(plainText);
+            } finally {
+                // 要主动释放锁
+                lock.unlock();
+            }
+        }
+
+    }
+
     /**
      * 根据退款单状态，更新对应退款单与订单
      * @param status 退款单状态

@@ -71,4 +71,11 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     void checkRefundStatus(String refundNo) throws Exception;
+
+    /**
+     * 处理订单 处理退款单
+     * @param bodyMap 参数
+     * @throws GeneralSecurityException 异常
+     */
+    void processRefund(Map<String, Object> bodyMap) throws GeneralSecurityException;
 }

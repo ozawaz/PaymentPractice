@@ -81,17 +81,10 @@ public class WxPayController {
         log.info("支付通知的id ===> {}", bodyMap.get("id"));
         log.info("支付通知的完整数据 ===> {}", body);
         // 签名的验证
-        WechatPay2ValidatorForRequest validator
-                = new WechatPay2ValidatorForRequest(verifier, body, requestId);
-        // 验签没通过
-        if (!validator.validate(request)) {
-            log.error("验签没通过");
-            response.setStatus(500);
-            map.put("code", "ERROR");
-            map.put("message", "验签没通过");
-            return JsonUtils.mapToJsonString(map);
+        String validate = validate(request, response, body, requestId, map);
+        if (validate != null) {
+            return validate;
         }
-        log.info("验签通过");
         // 处理订单
         wxPayService.processOrder(bodyMap);
         //成功应答：成功应答必须为200或204，否则就是失败应答
@@ -149,5 +142,60 @@ public class WxPayController {
         log.info("查询退款");
         String result = wxPayService.queryRefund(refundNo);
         return Result.ok().setMessage("查询成功").data("result", result);
+    }
+
+    /**
+     * 退款结果通知
+     * 退款状态改变后，微信会把相关退款结果发送给商户。
+     */
+    @PostMapping("/refunds/notify")
+    @SuppressWarnings("unchecked")
+    public String refundsNotify(HttpServletRequest request, HttpServletResponse
+            response) {
+        log.info("退款通知执行");
+        // 应答对象
+        Map<String, String> map = new HashMap<>(2);
+        try {
+            // 处理通知参数
+            String body = HttpUtils.readData(request);
+            Map<String, Object> bodyMap = JsonUtils.jsonStringToMap(body);
+            String requestId = (String)bodyMap.get("id");
+            log.info("支付通知的id ===> {}", requestId);
+            // 签名的验证
+            String validate = validate(request, response, body, requestId, map);
+            if (validate != null) {
+                return validate;
+            }
+            // 处理退款单
+            wxPayService.processRefund(bodyMap);
+            // 成功应答
+            response.setStatus(200);
+            map.put("code", "SUCCESS");
+            map.put("message", "成功");
+            return JsonUtils.mapToJsonString(map);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 失败应答
+            response.setStatus(500);
+            map.put("code", "ERROR");
+            map.put("message", "失败");
+            return JsonUtils.mapToJsonString(map);
+        }
+    }
+
+    private String validate(HttpServletRequest request, HttpServletResponse
+            response, String body, String requestId, Map<String, String> map) {
+        // 签名的验证
+        WechatPay2ValidatorForRequest validator = new WechatPay2ValidatorForRequest(verifier, body, requestId);
+        // 验签没通过
+        if (!validator.validate(request)) {
+            log.error("验签没通过");
+            response.setStatus(500);
+            map.put("code", "ERROR");
+            map.put("message", "验签没通过");
+            return JsonUtils.mapToJsonString(map);
+        }
+        log.info("验签通过");
+        return null;
     }
 }
