@@ -2,6 +2,7 @@ package cn.ozawaz.weixin.service.impl;
 
 import cn.ozawaz.weixin.entity.OrderInfo;
 import cn.ozawaz.weixin.entity.RefundInfo;
+import cn.ozawaz.weixin.enums.wxpay.WxRefundStatus;
 import cn.ozawaz.weixin.mapper.RefundInfoMapper;
 import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.RefundInfoService;
@@ -12,7 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * @author ozawa
@@ -53,6 +57,17 @@ public class RefundInfoServiceImpl extends ServiceImpl<RefundInfoMapper, RefundI
         RefundInfo refundInfo = this.lambdaQuery().eq(RefundInfo::getRefundNo, refundNo).one();
         // 根据map中的字段更新退款信息
         updateRefundInfoByMap(bodyAsString, map, refundInfo);
+    }
+
+    @Override
+    public List<RefundInfo> getNoRefundOrderByDuration(int minutes) {
+        // minutes分钟之前的时间
+        Instant instant = Instant.now().minus(Duration.ofMinutes(minutes));
+
+        return this.lambdaQuery()
+                .eq(RefundInfo::getRefundStatus, WxRefundStatus.PROCESSING.getType())
+                .le(RefundInfo::getCreateTime, instant)
+                .list();
     }
 
     /**
