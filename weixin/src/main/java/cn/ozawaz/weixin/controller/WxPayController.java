@@ -11,6 +11,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -112,5 +113,19 @@ public class WxPayController {
         log.info("取消订单");
         wxPayService.cancelOrder(orderNo);
         return Result.ok().setMessage("订单已取消");
+    }
+
+    /**
+     * 查询订单
+     * @param orderNo 订单号
+     * @return 返回订单状态
+     * @throws Exception 异常
+     */
+    @ApiOperation("查询订单：测试订单状态用")
+    @GetMapping("query/{orderNo}")
+    public Result queryOrder(@PathVariable String orderNo) throws Exception {
+        log.info("查询订单");
+        String bodyAsString = wxPayService.queryOrder(orderNo);
+        return Result.ok().setMessage("查询成功").data("bodyAsString", bodyAsString);
     }
 }

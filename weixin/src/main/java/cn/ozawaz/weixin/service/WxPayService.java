@@ -33,4 +33,12 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     void cancelOrder(String orderNo) throws Exception;
+
+    /**
+     查询订单
+     * @param orderNo 订单号
+     * @return 返回订单状态
+     * @throws Exception 异常
+     */
+    String queryOrder(String orderNo) throws Exception;
 }

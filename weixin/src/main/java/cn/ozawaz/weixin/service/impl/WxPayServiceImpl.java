@@ -15,7 +15,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.wechat.pay.contrib.apache.httpclient.util.AesUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -26,7 +28,9 @@ import org.springframework.util.StringUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -122,6 +126,21 @@ public class WxPayServiceImpl implements WxPayService {
         orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.CANCEL);
     }
 
+    @Override
+    public String queryOrder(String orderNo) throws Exception {
+        log.info("查单接口调用 ===> {}", orderNo);
+
+        // 地址
+        String url = String.format(WxApiType.ORDER_QUERY_BY_NO.getType(), orderNo);
+        url = wxPayConfig.getDomain().concat(url).concat("?mchid=").concat(wxPayConfig.getMchId());
+
+        // 请求对象
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Accept", "application/json");
+
+        return callHttpReturn(Collections.singletonList(httpGet));
+    }
+
     /**
      * 关单接口调用
      * @param orderNo 订单号
@@ -130,7 +149,7 @@ public class WxPayServiceImpl implements WxPayService {
         log.info("关单接口的调用，订单号 ===> {}", orderNo);
 
         // 组装json请求体
-        Map<String, String> paramsMap = new HashMap<>();
+        Map<String, String> paramsMap = new HashMap<>(1);
         paramsMap.put("mchid", wxPayConfig.getMchId());
         String jsonParams = JsonUtils.mapToJsonString(paramsMap);
         log.info("请求参数 ===> {}", jsonParams);
@@ -141,7 +160,7 @@ public class WxPayServiceImpl implements WxPayService {
         HttpPost httpPost = getHttpPost(jsonParams, url);
 
         // 完成签名并执行请求
-        callHttpPost(httpPost);
+        callHttp(Collections.singletonList(httpPost));
     }
 
     /**
@@ -302,10 +321,10 @@ public class WxPayServiceImpl implements WxPayService {
 
     /**
      * 完成签名并执行请求
-     * @param httpPost 请求
+     * @param http 请求
      */
-    private void callHttpPost(HttpPost httpPost) throws Exception{
-        try (CloseableHttpResponse response = wxPayClient.execute(httpPost)) {
+    private void callHttp(List<? extends HttpUriRequest> http) throws Exception{
+        try (CloseableHttpResponse response = wxPayClient.execute(http.get(0))) {
             // 响应体
             String bodyAsString = "无返回体";
             if (response.getEntity() != null) {
@@ -315,6 +334,26 @@ public class WxPayServiceImpl implements WxPayService {
             int statusCode = response.getStatusLine().getStatusCode();
             // 处理响应
             detailResponse(statusCode, bodyAsString);
+        }
+    }
+
+    /**
+     * 完成签名并执行请求，返回响应体
+     * @param http 请求
+     */
+    private String callHttpReturn(List<? extends HttpUriRequest> http) throws Exception{
+        try (CloseableHttpResponse response = wxPayClient.execute(http.get(0))) {
+            // 响应体
+            String bodyAsString = "无返回体";
+            if (response.getEntity() != null) {
+                bodyAsString = EntityUtils.toString(response.getEntity());
+            }
+            // 响应状态码
+            int statusCode = response.getStatusLine().getStatusCode();
+            // 处理响应
+            detailResponse(statusCode, bodyAsString);
+            // 返回
+            return bodyAsString;
         }
     }
 
