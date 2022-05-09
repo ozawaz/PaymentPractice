@@ -7,6 +7,7 @@ import cn.ozawaz.weixin.enums.OrderStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxApiCode;
 import cn.ozawaz.weixin.enums.wxpay.WxApiType;
 import cn.ozawaz.weixin.enums.wxpay.WxNotifyType;
+import cn.ozawaz.weixin.enums.wxpay.WxRefundStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxTradeState;
 import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.PaymentInfoService;
@@ -196,6 +197,47 @@ public class WxPayServiceImpl implements WxPayService {
         httpGet.setHeader("Accept", "application/json");
 
         return callHttpReturn(Collections.singletonList(httpGet));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void checkRefundStatus(String refundNo) throws Exception {
+        log.warn("根据退款单号核实退款单状态 ===> {}", refundNo);
+
+        // 调用查询接口，获取json字符串
+        String jsonString = queryRefund(refundNo);
+        // 改成map对象
+        HashMap<String, String> map = JsonUtils.jsonStringToMap(jsonString);
+        // 获取微信支付端退款状态
+        String status = map.get("status");
+        // 获取订单号
+        String orderNo = map.get("out_trade_no");
+        // 根据订单状态进行对应的处理
+        detailRefund(status, jsonString, orderNo, refundNo);
+    }
+
+    /**
+     * 根据退款单状态，更新对应退款单与订单
+     * @param status 退款单状态
+     * @param jsonString 退款信息
+     * @param orderNo 订单号
+     */
+    private void detailRefund(String status, String jsonString, String orderNo, String refundNo) {
+        if (WxRefundStatus.SUCCESS.getType().equals(status)) {
+            log.warn("核实订单已退款成功 ===> {}", refundNo);
+            // 如果确认退款成功，则更新订单状态
+            orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.REFUND_SUCCESS);
+            // 更新退款单
+            refundInfoService.updateRefund(jsonString);
+        }
+        if (WxRefundStatus.ABNORMAL.getType().equals(status)) {
+            log.warn("核实订单退款异常 ===> {}", refundNo);
+            // 如果确认退款成功，则更新订单状态
+            orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.REFUND_ABNORMAL);
+            // 更新退款单
+            refundInfoService.updateRefund(jsonString);
+        }
+
     }
 
     /**

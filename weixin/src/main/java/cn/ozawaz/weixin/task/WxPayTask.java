@@ -62,7 +62,7 @@ public class WxPayTask {
      * 从第0秒开始每隔30秒执行1次，查询创建超过5分钟，并且未成功的退款单
      */
     @Scheduled(cron = "0/30 * * * * ?")
-    public void refundConfirm() {
+    public void refundConfirm() throws Exception {
         log.info("refundConfirm 被执行......");
         // 找出申请退款超过5分钟并且未成功的退款单
         List<RefundInfo> refundInfoList =
@@ -70,6 +70,8 @@ public class WxPayTask {
         for (RefundInfo refundInfo : refundInfoList) {
             String refundNo = refundInfo.getRefundNo();
             log.warn("超时未退款的退款单号 ===> {}", refundNo);
+            // 核实订单状态：调用微信支付查询退款接口
+            wxPayService.checkRefundStatus(refundNo);
         }
     }
 }

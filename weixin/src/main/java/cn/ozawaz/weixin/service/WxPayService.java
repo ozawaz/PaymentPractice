@@ -64,4 +64,11 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     String queryRefund(String refundNo) throws Exception;
+
+    /**
+     * 核实订单状态：调用微信支付查询退款接口
+     * @param refundNo 订单号
+     * @throws Exception 异常
+     */
+    void checkRefundStatus(String refundNo) throws Exception;
 }
