@@ -41,4 +41,11 @@ public interface WxPayService {
      * @throws Exception 异常
      */
     String queryOrder(String orderNo) throws Exception;
+
+    /**
+     * 核实订单状态：调用微信支付查单接口
+     * @param orderNo 订单号
+     * @throws Exception 异常
+     */
+    void checkOrderStatus(String orderNo) throws Exception;
 }

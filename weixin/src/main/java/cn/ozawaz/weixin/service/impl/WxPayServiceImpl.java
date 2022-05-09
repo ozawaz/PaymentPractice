@@ -6,6 +6,7 @@ import cn.ozawaz.weixin.enums.OrderStatus;
 import cn.ozawaz.weixin.enums.wxpay.WxApiCode;
 import cn.ozawaz.weixin.enums.wxpay.WxApiType;
 import cn.ozawaz.weixin.enums.wxpay.WxNotifyType;
+import cn.ozawaz.weixin.enums.wxpay.WxTradeState;
 import cn.ozawaz.weixin.service.OrderInfoService;
 import cn.ozawaz.weixin.service.PaymentInfoService;
 import cn.ozawaz.weixin.service.WxPayService;
@@ -139,6 +140,41 @@ public class WxPayServiceImpl implements WxPayService {
         httpGet.setHeader("Accept", "application/json");
 
         return callHttpReturn(Collections.singletonList(httpGet));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void checkOrderStatus(String orderNo) throws Exception {
+        // 调用查询接口，获取json字符串
+        String jsonString = queryOrder(orderNo);
+        // 改成map对象
+        HashMap<String, Object> map = JsonUtils.getMap(jsonString);
+        // 获取订单状态
+        Object tradeState = map.get("trade_state");
+        // 根据订单状态进行对应的处理
+        detailOrder(tradeState, jsonString, orderNo);
+    }
+
+    /**
+     * 根据订单状态，更新对应订单
+     * @param tradeState 订单状态
+     * @param jsonString 查询订单结果
+     * @param orderNo 订单号
+     */
+    private void detailOrder(Object tradeState, String jsonString, String orderNo) throws Exception {
+        if (WxTradeState.SUCCESS.getType().equals(tradeState)) {
+            log.warn("核实订单已支付 ===> {}", orderNo);
+            // 如果确认订单已支付则更新本地订单状态
+            orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.SUCCESS);
+            // 记录支付日志
+            paymentInfoService.createPaymentInfo(jsonString);
+        } else {
+            log.warn("核实订单未支付 ===> {}", orderNo);
+            // 如果订单未支付，则调用关单接口
+            closeOrder(orderNo);
+            // 更新本地订单状态
+            orderInfoService.updateStatusByOrderNo(orderNo, OrderStatus.CLOSED);
+        }
     }
 
     /**
