@@ -37,4 +37,11 @@ public interface OrderInfoService extends IService<OrderInfo> {
      * @param type 订单状态
      */
     void updateStatusByOrderNo(String orderNo, OrderStatus type);
+
+    /**
+     * 查询创建超过5分钟，并且未支付的订单
+     * @param minutes 时间
+     * @return 返回订单列表
+     */
+    List<OrderInfo> getNoPayOrderByDuration(int minutes);
 }
